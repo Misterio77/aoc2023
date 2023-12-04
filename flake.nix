@@ -27,8 +27,8 @@
     eachSystem (import systems) (system: let
       pkgs = nixpkgs.legacyPackages.${system};
     in rec {
-      packages = genAttrs days (day: pkgs.callPackage ./${day}/default.nix);
-      devShells = genAttrs days (day: pkgs.callPackage ./${day}/shell.nix);
+      packages = genAttrs days (day: pkgs.callPackage ./${day}/default.nix { });
+      devShells = genAttrs days (day: pkgs.callPackage ./${day}/shell.nix { });
       hydraJobs = filterPackages system packages;
       formatter = pkgs.alejandra;
     });

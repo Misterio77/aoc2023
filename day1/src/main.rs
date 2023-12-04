@@ -1,52 +1,70 @@
-use aho_corasick::AhoCorasick;
 use anyhow::Result;
-use maplit::hashmap as map;
-use std::collections::HashMap as Map;
 use std::io;
 
-fn replace(input: &str, mapping: &Map<&str, &str>) -> Result<String> {
-    let values: Vec<&str> = mapping.values().copied().collect();
-    let ac = AhoCorasick::new(mapping.keys())?;
-    let mut wtr = vec![];
-    ac.try_stream_replace_all(input.as_bytes(), &mut wtr, &values)?;
-    let output = String::from_utf8(wtr)?;
-    Ok(output)
+fn part1(input: &str) -> u32 {
+    input
+        .lines()
+        .map(|l| {
+            let f = l.chars().find_map(|c| c.to_digit(10)).unwrap_or(0);
+            let l = l.chars().rev().find_map(|c| c.to_digit(10)).unwrap_or(f);
+            f * 10 + l
+        })
+        .sum()
+}
+
+fn convert_num(name: &str) -> Option<u32> {
+    if name.starts_with("zero") {
+        Some(0)
+    } else if name.starts_with("one") {
+        Some(1)
+    } else if name.starts_with("two") {
+        Some(2)
+    } else if name.starts_with("three") {
+        Some(3)
+    } else if name.starts_with("four") {
+        Some(4)
+    } else if name.starts_with("five") {
+        Some(5)
+    } else if name.starts_with("six") {
+        Some(6)
+    } else if name.starts_with("seven") {
+        Some(7)
+    } else if name.starts_with("eight") {
+        Some(8)
+    } else if name.starts_with("nine") {
+        Some(9)
+    } else {
+        name.chars().nth(0)?.to_digit(10)
+    }
+}
+
+fn find_num(line: &str, reverse: bool) -> Option<u32> {
+    let chars: Vec<char> = if reverse {
+        line.chars().rev().collect()
+    } else {
+        line.chars().collect()
+    };
+    let index = |i: usize| if reverse { chars.len() - i - 1 } else { i };
+    chars
+        .iter()
+        .enumerate()
+        .find_map(|(i, _)| convert_num(&line[index(i)..]))
+}
+
+fn part2(input: &str) -> u32 {
+    input
+        .lines()
+        .map(|l| {
+            let first = find_num(l, false).unwrap_or(0);
+            let last = find_num(l, true).unwrap_or(first);
+            dbg!(10 * first + last)
+        })
+        .sum()
 }
 
 fn main() -> Result<()> {
-    let sum: u32 = io::stdin()
-        .lines()
-        // Filter only valid lines
-        .filter_map(|l| l.ok())
-        // Replace spelled out numbers with actual numbers
-        .filter_map(|l| {
-            replace(
-                &l,
-                &map! {
-                    "zero"=> "0",
-                    "one"=> "1",
-                    "two"=> "2",
-                    "three"=> "3",
-                    "four"=> "4",
-                    "five"=> "5",
-                    "six"=> "6",
-                    "seven"=> "7",
-                    "eight"=> "8",
-                    "nine"=> "9"
-                },
-            )
-            .ok()
-        })
-        // Parse each string into a list of numbers
-        .map(|l| l.chars().filter_map(|c| c.to_digit(10)).collect())
-        // Get first and last number, concatenate them
-        .map(|n: Vec<_>| {
-            let first = n.first().unwrap();
-            let last = n.last().unwrap_or(first);
-            dbg!(first)*10 + dbg!(last)
-        })
-        .sum();
-
-    println!("{sum}");
+    let input = io::read_to_string(io::stdin())?;
+    println!("Part 1: {}", part1(&input));
+    println!("Part 2: {}", part2(&input));
     Ok(())
 }

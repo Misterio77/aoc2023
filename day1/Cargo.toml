@@ -6,4 +6,3 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 maplit = "1.0"
-aho-corasick = "1.1"

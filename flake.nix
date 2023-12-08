@@ -20,15 +20,58 @@
     ...
   }: let
     inherit (builtins) filter attrNames readDir;
-    inherit (nixpkgs.lib) hasPrefix genAttrs;
+    inherit (nixpkgs.lib) hasPrefix genAttrs hasSuffix any importTOML;
     inherit (utils.lib) filterPackages eachSystem;
-    days = filter (hasPrefix "day") (attrNames (readDir ./.));
+    listDir = dir: attrNames (readDir dir);
+    days = filter (hasPrefix "day") (listDir ./.);
+    hasCabal = dir: any (hasSuffix ".cabal") (listDir dir);
+    hasCargo = dir: any (n: n == "Cargo.toml") (listDir dir);
   in
     eachSystem (import systems) (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      mkDay = src:
+        if (hasCabal src)
+        then mkHaskell src
+        else if (hasCargo src)
+        then mkRust src
+        else throw "Couldn't find either cabal or cargo files at ${src}";
+      mkHaskell = root: rec {
+        package = pkgs.haskellPackages.developPackage {inherit root;};
+        devShell = pkgs.mkShell {
+          inputsFrom = [package];
+          buildInputs = [
+            pkgs.aoc-cli
+            pkgs.ghc
+            pkgs.cabal-install
+            pkgs.haskell-language-server
+          ];
+        };
+      };
+      mkRust = src: rec {
+        package = let
+          manifest = importTOML "${src}/Cargo.toml";
+        in
+          pkgs.rustPlatform.buildRustPackage {
+            inherit src;
+            pname = manifest.package.name;
+            version = manifest.package.version;
+            cargoLock.lockFile = "${src}/Cargo.lock";
+          };
+        shell = pkgs.mkShell {
+          inputsFrom = [package];
+          buildInputs = [
+            pkgs.aoc-cli
+            pkgs.rustc
+            pkgs.cargo
+            pkgs.rust-analyzer
+            pkgs.clippy
+            pkgs.rustfmt
+          ];
+        };
+      };
     in rec {
-      packages = genAttrs days (day: pkgs.callPackage ./${day}/default.nix { });
-      devShells = genAttrs days (day: pkgs.callPackage ./${day}/shell.nix { });
+      packages = genAttrs days (day: (mkDay ./${day}).package);
+      devShells = genAttrs days (day: (mkDay ./${day}).shell);
       hydraJobs = filterPackages system packages;
       formatter = pkgs.alejandra;
     });

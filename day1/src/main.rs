@@ -57,7 +57,7 @@ fn part2(input: &str) -> u32 {
         .map(|l| {
             let first = find_num(l, false).unwrap_or(0);
             let last = find_num(l, true).unwrap_or(first);
-            dbg!(10 * first + last)
+            10*first + last
         })
         .sum()
 }
